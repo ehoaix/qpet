@@ -6,6 +6,45 @@ from lxml import etree
 from datetime import date
 import time
 import os
+from selenium import webdriver
+import time
+
+qq=''
+passwd=''
+
+
+def getSky():
+    # 浏览器驱动位置
+    # 可能需要手机确定
+    driver = webdriver.Firefox(executable_path ="E:\浏览器驱动\geckodriver-v0.29.0-win64\geckodriver")
+    driver.set_window_position(20, 40)
+    driver.set_window_size(1100,700)
+
+    driver.implicitly_wait(30)
+    driver.get('http://i.qq.com')
+    driver.switch_to.frame('login_frame')
+    switcher_plogin = driver.find_element_by_id('switcher_plogin')
+    switcher_plogin.click()
+    time.sleep(1)
+
+    username = driver.find_element_by_id('u')
+    password = driver.find_element_by_id('p')
+    login_button = driver.find_element_by_id('login_button')  # 查找登陆按键
+    username.clear()
+    username.send_keys(qq)  # 输入账号
+    password.clear()
+    password.send_keys(passwd)  # 输入密码
+    time.sleep(1)
+    login_button.click()
+    driver.get('https://user.qzone.qq.com/proxy/domain/boss.qzone.qq.com/fcg-bin/fcg_get_multiple_strategy?uin=758977660&board_id=2685&need_cnt=2&g_tk=362549264')
+
+    cookie_list = driver.get_cookies()
+    cookie_dict = {}
+    for cookie in cookie_list:
+        if 'name' in cookie and 'value' in cookie:
+            cookie_dict[cookie['name']] = cookie['value']
+    return cookie_dict.get('skey'),cookie_dict.get('uin')
+
 
 class qpet:
 
@@ -21,7 +60,7 @@ class qpet:
 
     def get_content(self, url: str) -> ByteString:
         try:
-            resp = requests.get(url, proxies = self.proxies, headers = self.headers)
+            resp = requests.get(url, proxies=self.proxies, headers=self.headers)
             if 200 == resp.status_code:
                 return resp.content
         except requests.ConnectionError:
@@ -44,7 +83,7 @@ class qpet:
         all_text = etree.HTML(content).xpath('//div[@id="id"]/text()')
         nick_name = etree.HTML(content).xpath('//div[@id="id"]/a[contains(@href, "cmd=ledouvip")]/preceding::text()[1]')
         title = etree.HTML(content).xpath('//div[@id="id"]/a[contains(@href, "cmd=titleshow")]/text()')
-       
+
         keyword_list = ['称号:', '竞技分段:', '帮派:', '等级:', '体力:', '活力:', '生命:', '敏捷:', '阅历:', '胜率:', '佣兵:']
         player_info = [item for item in all_text if any(keyword in item for keyword in keyword_list)]
         if player_info:
@@ -53,7 +92,7 @@ class qpet:
             if win_rate:
                 win_rate_index = player_info.index(win_rate[0])
                 player_info[win_rate_index] = '战斗力' + player_info[win_rate_index]
-        
+
         if nick_name:
             player_info.insert(0, nick_name[0])
 
@@ -119,7 +158,8 @@ class qpet:
         for island_id in range(5):
             params['island_id'] = island_id
             url = self.base_url + urlencode(params)
-            rewards = self.content_parser(url, '//div[@id="id"]/p/a[contains(@href, "op=getPointAward") or contains(@href, "op=getIslandAward")]/@href')
+            rewards = self.content_parser(url,
+                                          '//div[@id="id"]/p/a[contains(@href, "op=getPointAward") or contains(@href, "op=getIslandAward")]/@href')
             for reward in rewards:
                 result = self.content_parser(self.protocol + reward, self.pattern_1)
                 print(result[1]) if len(result) > 1 else print(result)
@@ -156,11 +196,11 @@ class qpet:
     # 武林盟主
     def martial_lord(self) -> str:
         params = {
-                'B_UID': 0,
-                'channel': 0,
-                'g_ut': 1,
-                'cmd': 'wlmz',
-                'op': 'view_index'
+            'B_UID': 0,
+            'channel': 0,
+            'g_ut': 1,
+            'cmd': 'wlmz',
+            'op': 'view_index'
         }
         # 一三五报名
         signup_time = [0, 2, 4]
@@ -175,7 +215,7 @@ class qpet:
         if self.weekday in signup_time:
             params['op'] = 'signup'
             # 黄金(战力>2000)/白银(战力>1000)/青铜(战力>200) 赛场，懒得取战力判断，还是这样简单粗暴的省事儿
-            for i in range(1,4):
+            for i in range(1, 4):
                 params['ground_id'] = i
                 url = self.base_url + urlencode(params)
                 result = self.content_parser(url, self.pattern_1)
@@ -197,12 +237,12 @@ class qpet:
     # 巅峰之战
     def decisive_battle(self):
         params = {
-                'channel': 0,
-                'g_ut': 1,
-                'cmd': 'gvg',
-                'sub': 5,
-                'group': 0,
-                'check': 1
+            'channel': 0,
+            'g_ut': 1,
+            'cmd': 'gvg',
+            'sub': 5,
+            'group': 0,
+            'check': 1
         }
         # 5: 对战  4：随机加入 南/北 派  1：领取奖励
         sub_list = [5, 4, 1]
@@ -282,10 +322,10 @@ class qpet:
     # 问鼎天下
     def resource_battle(self):
         params = {
-                'B_UID': 0,
-                'channel': 0,
-                'g_ut': 1,
-                'cmd': 'tbattle'
+            'B_UID': 0,
+            'channel': 0,
+            'g_ut': 1,
+            'cmd': 'tbattle'
         }
         url = self.base_url + urlencode(params)
         if self.weekday < 5:
@@ -306,7 +346,8 @@ class qpet:
                 print(result[1]) if len(result) > 1 else print(result)
         else:
             # 帮派助威
-            gang_list = self.content_parser(url, '//div[@id="id"]/p/a[contains(@href, "op=cheerregionbattle") or contains(@href, "op=cheerchampionbattle")]/@href')
+            gang_list = self.content_parser(url,
+                                            '//div[@id="id"]/p/a[contains(@href, "op=cheerregionbattle") or contains(@href, "op=cheerchampionbattle")]/@href')
             if gang_list:
                 result = self.content_parser(self.protocol + random.choice(gang_list), self.pattern_1)
                 print(result[1]) if len(result) > 1 else print(result)
@@ -338,7 +379,7 @@ class qpet:
             url = self.base_url + urlencode(params)
             result = self.content_parser(url, self.pattern_1)
             print(result[0]) if len(result) > 0 else print(result)
-    
+
     # 仙武修真
     def immortals(self):
         params = {
@@ -390,10 +431,10 @@ class qpet:
     # 门派邀请赛
     def sect_tournament(self):
         params = {
-                'channel': 0,
-                'g_ut': 1,
-                'cmd': 'secttournament',
-                'op': 'fight'
+            'channel': 0,
+            'g_ut': 1,
+            'cmd': 'secttournament',
+            'op': 'fight'
         }
         op_list = ['fight', 'signup']
         for op in op_list:
@@ -426,7 +467,7 @@ class qpet:
                 for enemy in enemy_list:
                     result = self.content_parser(self.protocol + enemy, self.pattern_1)
                     print(result[1]) if len(result) > 1 else print(result)
-                
+
                 # 领取任务奖励
                 params['cmd'] = 'sect_task'
                 url = self.base_url + urlencode(params)
@@ -455,6 +496,7 @@ class qpet:
             url = self.base_url + urlencode(params)
             result = self.content_parser(url, self.pattern_1)
             print(result[2]) if len(result) > 2 else print(result)
+
     # 幻境
     def misty(self):
         params = {
@@ -490,7 +532,7 @@ class qpet:
             'type': 7,
             'confirm': 1
         }
-        type_list = [7,1]
+        type_list = [7, 1]
         for item in type_list:
             params['type'] = item
             url = self.base_url + urlencode(params)
@@ -557,7 +599,8 @@ class qpet:
             params['op'] = item
             url = self.base_url + urlencode(params)
             if item == 3:
-                enemy_list = self.content_parser(url, '//div[@id="id"]/p/a[contains(@href, "op=14")][position()<4]/@href')
+                enemy_list = self.content_parser(url,
+                                                 '//div[@id="id"]/p/a[contains(@href, "op=14")][position()<4]/@href')
                 for item in enemy_list:
                     result = self.content_parser(self.protocol + item, self.pattern_1)
                     print(result[1]) if len(result) > 1 else print(result)
@@ -716,7 +759,7 @@ class qpet:
         for gift in gifts:
             result = self.content_parser(self.protocol + gift, self.pattern_1)
             print(result[1]) if len(result) > 1 else print(result)
-    
+
     # 一键完成任务
     def common_mission(self):
         params = {
@@ -800,7 +843,7 @@ class qpet:
                         direction_list = etree.HTML(resp_bytes).xpath('//div[@id="id"]/p/a[last()]/@href')
                         if direction_list:
                             result = self.content_parser(self.protocol + direction_list[0], self.pattern_1)
-            
+
             print(result[1]) if len(result) > 1 else print(result)
             if any(item in str(result) for item in interrupt_signal):
                 break
@@ -815,7 +858,7 @@ class qpet:
             'giftbagid': 1,
             'action': 1
         }
-        for item in range(1,3):
+        for item in range(1, 3):
             params['giftbagid'] = item
             url = self.base_url + urlencode(params)
             result = self.content_parser(url, self.pattern_1)
@@ -829,40 +872,44 @@ class qpet:
             'g_ut': 1,
             'cmd': 'pacfg'
         }
-        
+
         free_rewards = {'cmd=newAct&subtype=88': '神魔大转盘',
                         'cmd=newAct&subtype=124': '开心娃娃机',
                         'cmd=newAct&subtype=43': '每日好礼步步升',
                         'cmd=newAct&subtype=57': '幸运大转盘',
                         'cmd=newAct&subtype=94': '活跃礼包',
                         'cmd=menuact': '乐斗菜单'
-        }
+                        }
         url = self.base_url + urlencode(params)
         all_activity_url = self.content_parser(url, '//div[@id="id"]/p/a/@href')
         url_list = [item for item in all_activity_url if any(reward_url in item for reward_url in list(free_rewards))]
         reward_url = []
         for url in url_list:
             if 'cmd=newAct&subtype=43' in url:
-                reward_url = self.content_parser(self.protocol + url, '//div[@id="id"]/p/a[contains(@href, "op=get")]/@href')
+                reward_url = self.content_parser(self.protocol + url,
+                                                 '//div[@id="id"]/p/a[contains(@href, "op=get")]/@href')
                 if reward_url:
                     result = self.content_parser(self.protocol + reward_url[0], self.pattern_1)
                     print(result[1]) if len(result) > 1 else print(result)
             elif 'cmd=newAct&subtype=57' in url:
-                reward_url = self.content_parser(self.protocol + url, '//div[@id="id"]/p/a[contains(@href, "op=roll")]/@href')
+                reward_url = self.content_parser(self.protocol + url,
+                                                 '//div[@id="id"]/p/a[contains(@href, "op=roll")]/@href')
                 if reward_url:
                     result = self.content_parser(self.protocol + reward_url[0], self.pattern_1)
                     print(result[1]) if len(result) > 1 else print(result)
             elif 'cmd=menuact' in url:
-                reward_url = self.content_parser(self.protocol + url, '//div[@id="id"]/a[contains(@href, "sub=1")][last()]/@href')
+                reward_url = self.content_parser(self.protocol + url,
+                                                 '//div[@id="id"]/a[contains(@href, "sub=1")][last()]/@href')
                 if reward_url:
                     result = self.content_parser(self.protocol + reward_url[0], self.pattern_1)
                     print(result[4]) if len(result) > 4 else print(result)
             else:
-                reward_url = self.content_parser(self.protocol + url, '//div[@id="id"]/p/a[contains(@href, "op=1")]/@href')
+                reward_url = self.content_parser(self.protocol + url,
+                                                 '//div[@id="id"]/p/a[contains(@href, "op=1")]/@href')
                 if reward_url:
                     result = self.content_parser(self.protocol + reward_url[0], self.pattern_1)
                     print(result[1]) if len(result) > 1 else print(result)
-            
+
     def main(self):
         print('----------玩家信息----------')
         player_info = self.get_player_info()
@@ -895,7 +942,7 @@ class qpet:
         print('----------梦想之旅----------')
         self.dream_trip()
         print('----------帮派黄金联赛----------')
-        self.faction_league()   
+        self.faction_league()
         print('----------仙武修真----------')
         self.immortals()
         print('----------会武----------')
@@ -925,9 +972,9 @@ class qpet:
         print('----------掠夺----------')
         self.forage_war()
         print('----------矿洞副本----------')
-        self.mine_cave()    
+        self.mine_cave()
         print('----------全民乱斗----------')
-        self.chaos_fight()  
+        self.chaos_fight()
         print('----------帮派商会----------')
         self.gang_market()
         print('----------一键完成每日任务----------')
@@ -945,11 +992,13 @@ class qpet:
         print('----------领取活动免费礼包----------')
         self.get_special_event()
 
+
+
 if __name__ == "__main__":
-    try:
-        cookie = os.environ["QPET_COOKIE"]
-    except Exception:
-        raise ValueError
+    skey,uin = getSky()
+
+    #得到cookie
+    cookie = "uin="+str(uin)+"; skey="+str(skey)
 
     protocol = 'https:'
     headers = {
